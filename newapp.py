@@ -8,42 +8,80 @@ Original file is located at
 """
 
 import streamlit as st
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+from transformers import T5ForConditionalGeneration, T5Tokenizer, pipeline
+from rake_nltk import Rake
+from keybert import KeyBERT
+from gensim import corpora
+from gensim.models.ldamodel import LdaModel
+from bertopic import BERTopic
+import nltk
 
-# Load model and tokenizer
-model = T5ForConditionalGeneration.from_pretrained('t5-small')
+# Load models
+summarizer = T5ForConditionalGeneration.from_pretrained('t5-small')
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
+sentiment_analysis = pipeline("sentiment-analysis")
+kw_model = KeyBERT()
 
+# Summarization function
 def summarize_text(text, max_length=150):
     inputs = tokenizer.encode("summarize: " + text, return_tensors="pt", max_length=1024, truncation=True)
-    summary_ids = model.generate(inputs, max_length=max_length, min_length=30, length_penalty=2.0, num_beams=4, early_stopping=True)
+    summary_ids = summarizer.generate(inputs, max_length=max_length, min_length=30, length_penalty=2.0, num_beams=4, early_stopping=True)
     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
     return summary
 
-def chunk_text(text, chunk_size=1024):
-    words = text.split()
-    for i in range(0, len(words), chunk_size):
-        yield ' '.join(words[i:i + chunk_size])
+# Sentiment analysis function
+def analyze_sentiment(text):
+    result = sentiment_analysis(text)
+    return result
 
-def summarize_large_text(text):
-    summaries = []
-    for chunk in chunk_text(text):
-        summary = summarize_text(chunk)
-        summaries.append(summary)
-    return " ".join(summaries)
+# Keyword extraction function
+def extract_keywords(text):
+    keywords = kw_model.extract_keywords(text, keyphrase_ngram_range=(1, 2), stop_words='english')
+    return [kw[0] for kw in keywords]
 
+# Topic modeling with Gensim's LDA
+def topic_modeling(text, num_topics=4):
+    nltk.download('punkt')
+    tokens = nltk.word_tokenize(text)
+    dictionary = corpora.Dictionary([tokens])
+    doc_term_matrix = [dictionary.doc2bow(tokens)]
+    lda_model = LdaModel(doc_term_matrix, num_topics=num_topics, id2word=dictionary, passes=10)
+    topics = lda_model.show_topics()
+    return topics
 
-# Streamlit interface
-st.title("Text Summarization App")
+# Streamlit app
+st.title("NLP Toolkit: Text Summarization, Sentiment Analysis, Keywords & Topics")
 
-text_input = st.text_area("Enter the text you want to summarize", height=300)
+st.write("""
+This app can perform text summarization, sentiment analysis, keyword extraction, and topic modeling on large corpora of text.
+""")
 
-if st.button("Generate Summary"):
+# Input text box for the user
+text_input = st.text_area("Enter the text you want to analyze", height=300)
+
+if st.button("Process Text"):
     if text_input:
-        with st.spinner("Generating summary..."):
-            summary = summarize_large_text(text_input)
-            st.subheader("Summary")
-            st.write(summary)
+        # Summarization
+        st.subheader("Summarized Text")
+        summary = summarize_text(text_input)
+        st.write(summary)
+
+        # Sentiment Analysis
+        st.subheader("Sentiment Analysis")
+        sentiment = analyze_sentiment(text_input)
+        st.write(sentiment)
+
+        # Keyword Extraction
+        st.subheader("Keyword Extraction")
+        keywords = extract_keywords(text_input)
+        st.write(", ".join(keywords))
+
+        # Topic Modeling
+        st.subheader("Topic Modeling")
+        topics = topic_modeling(text_input)
+        for topic in topics:
+            st.write(f"Topic {topic[0]}: {topic[1]}")
     else:
-        st.warning("Please input some text to summarize.")
+        st.warning("Please input some text to analyze.")
+
 
