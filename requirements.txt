@@ -10,3 +10,4 @@ gensim
 keybert
 bertopic
 tf-keras
+nltk
