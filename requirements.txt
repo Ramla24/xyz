@@ -9,3 +9,4 @@ rake-nltk
 gensim 
 keybert
 bertopic
+tf-keras
