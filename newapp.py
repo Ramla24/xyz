@@ -16,6 +16,8 @@ from gensim.models.ldamodel import LdaModel
 from bertopic import BERTopic
 import nltk
 
+nltk.download('punkt')
+
 # Load models
 summarizer = T5ForConditionalGeneration.from_pretrained('t5-small')
 tokenizer = T5Tokenizer.from_pretrained('t5-small')
