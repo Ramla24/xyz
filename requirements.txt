@@ -5,3 +5,7 @@ transformers
 torch
 tensorflow
 sentencepiece
+rake-nltk 
+gensim 
+keybert
+bertopic
